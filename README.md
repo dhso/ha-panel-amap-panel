@@ -24,3 +24,4 @@ panel_custom:
 ```
 有问题请提issue，谢谢！
 ```
+1. 高德地图key申请 https://lbs.amap.com/dev/key/app
