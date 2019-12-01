@@ -2,7 +2,7 @@
 Amap map panel for home assistant
 
 ## 使用
-1. 在 home assistant 的配置目录（configuration.yaml的所在目录），创建 panel 文件夹并将 amap-panel.html 放进去。
+1. 在 home assistant 的配置目录（configuration.yaml的所在目录），创建 panels 文件夹并将 amap-panel.html 放进去。
 2. 配置 configuration.yaml 文件，加入如下配置：
 
 ```yaml
