@@ -1097,6 +1097,10 @@
                     var(--ha-marker-color, var(--default-primary-color));
                 border-radius: 50%;
             }
+            ha-icon {
+                width: 24px;
+                height: 24px;
+            }
         </style>
 
         <app-toolbar>
@@ -1123,8 +1127,8 @@
     //定义一些常量
     var x_PI = (3.14159265358979324 * 3000.0) / 180.0;
     var PI = 3.1415926535897932384626;
-    var a = 6378245.0;
-    var ee = 0.00669342162296594323;
+    var offset_a = 6378245.0;
+    var offset_ee = 0.00669342162296594323;
 
     /**
      * 百度坐标系 (BD-09) 与 火星坐标系 (GCJ-02)的转换
@@ -1174,11 +1178,14 @@
             var dlng = transformlng(lng - 105.0, lat - 35.0);
             var radlat = (lat / 180.0) * PI;
             var magic = Math.sin(radlat);
-            magic = 1 - ee * magic * magic;
+            magic = 1 - offset_ee * magic * magic;
             var sqrtmagic = Math.sqrt(magic);
             dlat =
-                (dlat * 180.0) / (((a * (1 - ee)) / (magic * sqrtmagic)) * PI);
-            dlng = (dlng * 180.0) / ((a / sqrtmagic) * Math.cos(radlat) * PI);
+                (dlat * 180.0) /
+                (((offset_a * (1 - offset_ee)) / (magic * sqrtmagic)) * PI);
+            dlng =
+                (dlng * 180.0) /
+                ((offset_a / sqrtmagic) * Math.cos(radlat) * PI);
             var mglat = lat + dlat;
             var mglng = lng + dlng;
             return [mglng, mglat];
@@ -1199,11 +1206,14 @@
             var dlng = transformlng(lng - 105.0, lat - 35.0);
             var radlat = (lat / 180.0) * PI;
             var magic = Math.sin(radlat);
-            magic = 1 - ee * magic * magic;
+            magic = 1 - offset_ee * magic * magic;
             var sqrtmagic = Math.sqrt(magic);
             dlat =
-                (dlat * 180.0) / (((a * (1 - ee)) / (magic * sqrtmagic)) * PI);
-            dlng = (dlng * 180.0) / ((a / sqrtmagic) * Math.cos(radlat) * PI);
+                (dlat * 180.0) /
+                (((offset_a * (1 - offset_ee)) / (magic * sqrtmagic)) * PI);
+            dlng =
+                (dlng * 180.0) /
+                ((offset_a / sqrtmagic) * Math.cos(radlat) * PI);
             mglat = lat + dlat;
             mglng = lng + dlng;
             return [lng * 2 - mglng, lat * 2 - mglat];
@@ -1284,7 +1294,7 @@
             return {
                 hass: {
                     type: Object,
-                    observer: "debouncedHassChanged"
+                    observer: "drawDevicesDebounced"
                 },
                 narrow: {
                     type: Boolean,
@@ -1304,8 +1314,8 @@
             super();
             this.amapMap = null;
             this.amapOverlays = [];
-            this.debouncedHassChanged = this.debounce(
-                this.hassChanged.bind(this),
+            this.drawDevicesDebounced = this.debounce(
+                this.drawDevices.bind(this),
                 500
             );
         }
@@ -1323,7 +1333,7 @@
             ).then(() => {
                 this.initAmapMap();
                 this.drawZones(this.hass);
-                this.drawDevices(this.hass);
+                this.drawDevicesDebounced(this.hass);
                 this.fitMap();
             });
         }
@@ -1334,14 +1344,13 @@
             this.amapMap && this.amapMap.destroy();
         }
 
-        hassChanged(newHass, oldHass) {
-            console.log("hassChanged");
-            this.drawDevices(newHass);
-        }
-
         initAmapMap() {
             const amapMapId = this.shadowRoot.querySelector("#AmapMap");
-            const lnglat = wgs84togcj02(120.919494, 32.003772);
+            const { longitude, latitude } = this.hass.config;
+            console.log(
+                `Current hass longitude:${longitude}, latitude:${latitude}`
+            );
+            const lnglat = wgs84togcj02(longitude, latitude);
             const amapMapOption = {
                 resizeEnable: true,
                 center: lnglat,
@@ -1409,6 +1418,9 @@
                         extData: key,
                         content: `<ha-icon icon=${icon}></ha-icon>`
                     });
+                    marker.on("click", () => {
+                        this.fire("hass-more-info", { entityId: key });
+                    });
                     this.amapMap.add(marker);
                     // 添加圆形区域
                     const circle = new AMap.Circle({
@@ -1428,26 +1440,25 @@
 
         drawDevices(hass) {
             if (!this.amapMap) return;
-            let keys = Object.keys(hass.states).filter(state => {
-                const { attributes } = hass.states[state];
-                return (
-                    state.indexOf("device_tracker") === 0 &&
-                    attributes.source_type === "gps" &&
-                    "longitude" in attributes &&
-                    "latitude" in attributes &&
-                    hass.states[state].state != "home"
-                );
-            });
-            // 清除 device_tracker
+            const newKeys = this.filterDevices(hass);
+            const lastKeys = [];
+            const lastKeyMarkers = {};
             const markers = this.amapMap.getAllOverlays("marker");
             for (let marker of markers) {
                 const extData = marker.getExtData();
                 if (extData.indexOf("device_tracker") === 0) {
-                    this.amapMap.remove(marker);
+                    lastKeys.push(extData);
+                    lastKeyMarkers[extData] = marker;
                 }
             }
-            // 绘制 device_tracker
-            for (let key of keys) {
+            for (let key of lastKeys) {
+                if (newKeys.indexOf(key) === -1) {
+                    // 需要删除的点
+                    console.log(`Del:${key}`);
+                    this.amapMap.remove(lastKeyMarkers[key]);
+                }
+            }
+            for (let key of newKeys) {
                 const { attributes, state } = hass.states[key];
                 const {
                     longitude,
@@ -1455,29 +1466,52 @@
                     friendly_name,
                     entity_picture
                 } = attributes;
-                const display_name =
-                    friendly_name
-                        .split(" ")
-                        .map(function(part) {
-                            return part.substr(0, 1);
-                        })
-                        .join("") || "";
-                const content = entity_picture
-                    ? `<iron-image sizing="cover" class="fit" src="${entity_picture}" ></iron-image>`
-                    : `<div class="device-marker"> ${display_name}</div>`;
                 const lnglat = wgs84togcj02(longitude, latitude);
-                const marker = new AMap.Marker({
-                    position: lnglat,
-                    offset: new AMap.Pixel(-20, -20),
-                    extData: key,
-                    title: friendly_name,
-                    content: content
-                });
-                marker.on("click", () => {
-                    this.fire("hass-more-info", { entityId: key });
-                });
-                this.amapMap.add(marker);
+                if (lastKeys.indexOf(key) === -1) {
+                    // 需要增加的点
+                    console.log(`Add:${key}`);
+                    const display_name =
+                        friendly_name
+                            .split(" ")
+                            .map(part => part[0])
+                            .join("")
+                            .substr(0, 3) || "";
+                    const content = entity_picture
+                        ? `<iron-image sizing="cover" class="fit" src="${entity_picture}" ></iron-image>`
+                        : `<div class="device-marker"> ${display_name}</div>`;
+                    const marker = new AMap.Marker({
+                        position: lnglat,
+                        offset: new AMap.Pixel(-20, -20),
+                        extData: key,
+                        title: friendly_name,
+                        content: content
+                    });
+                    marker.on("click", () => {
+                        this.fire("hass-more-info", { entityId: key });
+                    });
+                    this.amapMap.add(marker);
+                } else {
+                    // 需要移动的点
+                    console.log(`Move:${key}`);
+                    lastKeyMarkers[key].setPosition(
+                        new AMap.LngLat(lnglat[0], lnglat[1])
+                    );
+                }
             }
+        }
+
+        filterDevices(hass) {
+            if (!hass || !hass.states) return [];
+            return Object.keys(hass.states).filter(state => {
+                const { attributes } = hass.states[state];
+                return (
+                    state.indexOf("device_tracker") === 0 &&
+                    // attributes.source_type === "gps" &&
+                    "longitude" in attributes &&
+                    "latitude" in attributes &&
+                    hass.states[state].state != "home"
+                );
+            });
         }
 
         loadScript(src) {
