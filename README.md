@@ -2,7 +2,7 @@
 Amap map panel for home assistant
 
 ## 使用
-1. 在 home assistant 的配置目录（configuration.yaml的所在目录），创建 panels 文件夹并将 amap-panel.html 放进去。
+1. 将 amap文件夹 放入 home assistant 的 www 文件夹。
 2. 配置 configuration.yaml 文件，加入如下配置：
 
 ```yaml
@@ -10,7 +10,7 @@ panel_custom:
     - name: amap-panel
       sidebar_title: 高德地图
       sidebar_icon: mdi:map
-      url_path: amap-panel
+      module_url: /local/amap/amap-panel.js
       trust_external_script: true
       config:
           key: 高德地图Web端key
@@ -18,7 +18,10 @@ panel_custom:
 3. 重启 home assistant, enjoy your self!
 
 ## 截图
-![截图](./WX20191201-160333@2x.png)
+1. 浅色模式
+![light](./light_amap.png)
+2. 深色模式
+![dark](./dark_amap.png)
 
 ## 问题
 ```
@@ -28,6 +31,11 @@ panel_custom:
 
 ## 日志
 ```
+2020-09-23
+1.[特性]适配最新版本的 Home Assistant（yaml配置跟文件放置路径都发生了变化）
+2.[特性]增加深色模式（根据设置里面配置的主题自动选择模式）
+3.[修复]修复在设备距离比较分散的时候，地图不能选择正确的比例显示所有图标
+
 2019-12-07
 1.修复zone图标不居中问题
 2.优化设备位置更新算法，设备位置刷新更平滑
