@@ -14,6 +14,8 @@ panel_custom:
       trust_external_script: true
       config:
           key: 高德地图Web端key
+          gcj02_devices:
+            - device_tracker.xxx
 ```
 3. 重启 home assistant, enjoy your self!
 
@@ -30,7 +32,11 @@ panel_custom:
 1. 高德地图key申请 https://lbs.amap.com/dev/key/app
 
 ## 日志
+
 ```
+2020-11-06
+1.[特性]增加GCJ02坐标的设备配置，防止再次坐标转换
+
 2020-09-23
 1.[特性]适配最新版本的 Home Assistant（yaml配置跟文件放置路径都发生了变化）
 2.[特性]增加深色模式（根据设置里面配置的主题自动选择模式）
