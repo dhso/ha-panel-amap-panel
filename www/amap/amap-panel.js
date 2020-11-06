@@ -156,9 +156,9 @@ class AmapPanel extends Element {
         const lastKeyMarkers = {};
         const markers = this.amapMap.getAllOverlays("marker");
         var gcj02Devices = [];
-		if (this.panel.config.hasOwnProperty("gcj02_devices")) {
-			gcj02Devices = this.panel.config.gcj02_devices;
-		}
+        if (this.panel.config.hasOwnProperty("gcj02_devices")) {
+            gcj02Devices = this.panel.config.gcj02_devices;
+        }
         for (let marker of markers) {
             const extData = marker.getExtData();
             if (extData.indexOf("device_tracker") === 0) {
@@ -182,9 +182,9 @@ class AmapPanel extends Element {
                 entity_picture,
             } = attributes;
             var lnglat = wgs84togcj02(longitude, latitude);
-			if (gcj02Devices.indexOf(key) > -1) {
-			    lnglat = [longitude, latitude];
-			} 
+            if (gcj02Devices.indexOf(key) > -1) {
+                lnglat = [longitude, latitude];
+            }
             if (lastKeys.indexOf(key) === -1) {
                 // 需要增加的点
                 console.log(`Add:${key}`);
