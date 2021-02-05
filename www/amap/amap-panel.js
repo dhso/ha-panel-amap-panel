@@ -1,13 +1,17 @@
 import "./libs/style-element.js";
 import "https://webapi.amap.com/loader.js";
-import { wgs84togcj02 } from "./libs/map-util.js?module";
+import {
+    wgs84togcj02,
+    getEntityName,
+    getEntityShortName,
+} from "./libs/utils.js?module";
 
 const { Element, html } = Polymer;
 
 class AmapPanel extends Element {
     static get properties() {
         return {
-            hass: { type: Object, observer: "drawDevicesDebounced" },
+            hass: { type: Object, observer: "drawEntitiesDebounced" },
             narrow: { type: Boolean },
             route: { type: Object },
             panel: { type: Object },
@@ -17,15 +21,18 @@ class AmapPanel extends Element {
     constructor() {
         super();
         this.amapMap = null;
-        this.drawDevicesDebounced = this.debounce(
-            this.drawDevices.bind(this),
+        this.drawEntitiesDebounced = this.debounce(
+            this.drawEntities.bind(this),
             500
         );
         this.fitMapDebounced = this.debounce(this.fitMap, 500);
+        this.zones = [];
+        this.trackers = [];
     }
 
     connectedCallback() {
         super.connectedCallback();
+        this.initAmap();
     }
 
     disconnectedCallback() {
@@ -36,7 +43,6 @@ class AmapPanel extends Element {
     ready() {
         console.log("ready");
         super.ready();
-        this.initAmap();
     }
 
     initAmap() {
@@ -75,7 +81,7 @@ class AmapPanel extends Element {
                     this.amapMapTrafficLayer.setMap(this.amapMap);
 
                     this.drawZones(this.hass);
-                    this.drawDevicesDebounced(this.hass);
+                    this.drawEntitiesDebounced(this.hass);
                     this.fitMapDebounced();
                 });
             })
@@ -92,138 +98,174 @@ class AmapPanel extends Element {
         this.amapMap && this.amapMap.setFitView();
     }
 
+    async fetchHistoryPath(start_time, end_time, entity_id) {
+        const [[history]] = await this.hass.callApi(
+            "GET",
+            `history/period/${start_time}?end_time=${end_time}&minimal_response${
+                entity_id ? `&filter_entity_id=${entity_id}` : ``
+            }`
+        );
+        let path = [];
+        for (let state of history) {
+            const { latitude, longitude } = state.attributes;
+            const lnglat = wgs84togcj02(longitude, latitude);
+            path.push(lnglat);
+        }
+        return path;
+    }
+
     toggleTrafffic(e) {
         if (e.target.checked) {
-            this.amapMapTrafficLayer.show();
+            this.amapMapTrafficLayer && this.amapMapTrafficLayer.show();
         } else {
-            this.amapMapTrafficLayer.hide();
+            this.amapMapTrafficLayer && this.amapMapTrafficLayer.hide();
+        }
+    }
+
+    toggleTrack(e) {
+        if (e.target.checked) {
+            const originPath = fetchHistoryPath(
+                new Date(new Date().setHours(0, 0, 0)).toISOString(),
+                new Date(new Date().setHours(23, 59, 59)).toISOString(),
+                e.target.data
+            );
+            const polyline = new AMap.Polyline({
+                path: originPath,
+                showDir: true,
+                strokeColor: "#28F", //线颜色
+                strokeWeight: 6, //线宽
+                extData: `track:${e.target.data}`,
+                // strokeOpacity: 1,     //线透明度
+                // strokeStyle: "solid"  //线样式
+            });
+            this.amapMap.add(polyline);
+            this.fitMapDebounced();
+        } else {
+            const polylines = this.amapMap.getAllOverlays("polyline");
+            for (let polyline of polylines) {
+                const extData = polyline.getExtData();
+                if (extData === `track:${e.target.data}`) {
+                    this.amapMap.remove(polyline);
+                }
+            }
         }
     }
 
     drawZones(hass) {
-        if (!this.amapMap || !hass) return;
-        let keys = Object.keys(hass.states).filter(
-            (state) => state.indexOf("zone") === 0
-        );
-        for (let key of keys) {
-            const { attributes } = hass.states[key];
-            if (
-                "longitude" in attributes &&
-                "latitude" in attributes &&
-                !attributes.passive
-            ) {
-                const {
-                    longitude,
-                    latitude,
-                    friendly_name,
-                    icon,
-                    radius,
-                } = attributes;
-                const lnglat = wgs84togcj02(longitude, latitude);
-                // 添加图标
-                const marker = new AMap.Marker({
-                    position: lnglat,
-                    offset: new AMap.Pixel(-12, -12),
-                    title: friendly_name,
-                    extData: key,
-                    content: `<ha-icon icon=${icon}></ha-icon>`,
-                });
-                marker.on("click", () => {
-                    this.fire("hass-more-info", { entityId: key });
-                });
-                this.amapMap.add(marker);
-                // 添加圆形区域
-                const circle = new AMap.Circle({
-                    center: lnglat,
-                    radius: radius,
-                    extData: key,
-                    strokeColor: "#3366FF",
-                    strokeOpacity: 0.3,
-                    strokeWeight: 3,
-                    fillColor: "#FFA500",
-                    fillOpacity: 0.35,
-                });
-                this.amapMap.add(circle);
-                this.fitMapDebounced();
-            }
-        }
-    }
-
-    drawDevices(hass) {
-        if (!this.amapMap || !hass) return;
-        const newKeys = this.filterDevices(hass);
-        const lastKeys = [];
-        const lastKeyMarkers = {};
-        const markers = this.amapMap.getAllOverlays("marker");
-        for (let marker of markers) {
-            const extData = marker.getExtData();
-            if (extData.indexOf("device_tracker") === 0) {
-                lastKeys.push(extData);
-                lastKeyMarkers[extData] = marker;
-            }
-        }
-        for (let key of lastKeys) {
-            if (newKeys.indexOf(key) === -1) {
-                // 需要删除的点
-                console.log(`Del:${key}`);
-                this.amapMap.remove(lastKeyMarkers[key]);
-            }
-        }
-        for (let key of newKeys) {
-            const { attributes, state } = hass.states[key];
-            const {
-                longitude,
-                latitude,
-                friendly_name,
-                entity_picture,
-            } = attributes;
-            const lnglat = wgs84togcj02(longitude, latitude);
-            if (lastKeys.indexOf(key) === -1) {
-                // 需要增加的点
-                console.log(`Add:${key}`);
-                const display_name =
-                    friendly_name
-                        .split(" ")
-                        .map((part) => part[0])
-                        .join("")
-                        .substr(0, 3) || "";
-                const content = entity_picture
-                    ? `<iron-image sizing="cover" class="fit" src="${entity_picture}" ></iron-image>`
-                    : `<div class="device-marker"> ${display_name}</div>`;
-                const marker = new AMap.Marker({
-                    position: lnglat,
-                    offset: new AMap.Pixel(-20, -20),
-                    extData: key,
-                    title: friendly_name,
-                    content: content,
-                });
-                marker.on("click", () => {
-                    this.fire("hass-more-info", { entityId: key });
-                });
-                this.amapMap.add(marker);
-                this.fitMapDebounced();
-            } else {
-                // 需要移动的点
-                console.log(`Move:${key}`);
-                lastKeyMarkers[key].setPosition(
-                    new AMap.LngLat(lnglat[0], lnglat[1])
-                );
-            }
-        }
-    }
-
-    filterDevices(hass) {
-        if (!hass || !hass.states) return [];
-        return Object.keys(hass.states).filter((state) => {
+        if (!this.amapMap || !hass || !hass.states) return;
+        this.zones = Object.keys(hass.states).filter((state) => {
             const { attributes } = hass.states[state];
             return (
-                state.indexOf("device_tracker") === 0 &&
-                // attributes.source_type === "gps" &&
+                state.indexOf("zone") === 0 &&
                 "longitude" in attributes &&
-                "latitude" in attributes &&
-                hass.states[state].state != "home"
+                "latitude" in attributes
             );
         });
+        for (let zone of this.zones) {
+            this.drawZone(hass.states[zone]);
+        }
+    }
+
+    drawEntities(hass) {
+        if (!this.amapMap || !hass || !hass.states) return;
+        this.trackers = Object.keys(hass.states).filter((state) => {
+            const { attributes } = hass.states[state];
+            return (
+                // attributes.source_type === "gps" &&
+                state.indexOf("device_tracker") === 0 &&
+                "longitude" in attributes &&
+                "latitude" in attributes
+            );
+        });
+        const _trackers = this.trackers.slice();
+
+        const markers = this.amapMap.getAllOverlays("marker");
+        for (let marker of markers) {
+            // entity_id
+            const state = marker.getExtData();
+            // 排除zone
+            if (state.indexOf("zone") === 0) continue;
+            if (!this.trackers.includes(state)) {
+                // 移除点
+                this.amapMap.remove(marker);
+                console.log(`Del:${state}`);
+                continue;
+            }
+            // 更新点
+            const { longitude, latitude } = hass.states[state].attributes;
+            const lnglat = wgs84togcj02(longitude, latitude);
+            marker.setPosition(new AMap.LngLat(lnglat[0], lnglat[1]));
+            console.log(`Mov:${state}`);
+            // 剩余部分
+            if (_trackers.includes(state)) {
+                _trackers.splice(_trackers.indexOf(state), 1);
+            }
+        }
+        // 添加点
+        for (let tracker of _trackers) {
+            this.drawTracker(hass.states[tracker]);
+        }
+    }
+
+    drawZone(state) {
+        if (!this.amapMap || !state) return;
+        const { longitude, latitude, icon, radius, passive } = state.attributes;
+        if (passive) return;
+        const title = getEntityName(state);
+        const lnglat = wgs84togcj02(longitude, latitude);
+        // 添加图标
+        const marker = new AMap.Marker({
+            position: lnglat,
+            offset: new AMap.Pixel(-12, -12),
+            title,
+            extData: state.entity_id,
+            content: `<ha-icon icon=${icon}></ha-icon>`,
+        });
+        marker.on("click", () => {
+            this.fire("hass-more-info", { entityId: state.entity_id });
+        });
+        this.amapMap.add(marker);
+        // 添加圆形区域
+        const circle = new AMap.Circle({
+            center: lnglat,
+            radius: radius,
+            extData: state.entity_id,
+            strokeColor: "#3366FF",
+            strokeOpacity: 0.3,
+            strokeWeight: 3,
+            fillColor: "#FFA500",
+            fillOpacity: 0.35,
+        });
+        this.amapMap.add(circle);
+        console.log(`Add:${state.entity_id}`);
+        this.fitMapDebounced();
+    }
+
+    drawTracker(state) {
+        if (!this.amapMap || !state) return;
+        if (state.state === "home") return;
+        const { attributes } = state;
+        const { longitude, latitude, entity_picture } = attributes;
+        const lnglat = wgs84togcj02(longitude, latitude);
+        const title = getEntityName(state);
+        const short_title = getEntityShortName(state);
+
+        const content = entity_picture
+            ? `<iron-image sizing="cover" class="fit" src="${entity_picture}" ></iron-image>`
+            : `<div class="device-marker"> ${short_title}</div>`;
+        const marker = new AMap.Marker({
+            position: lnglat,
+            offset: new AMap.Pixel(-20, -20),
+            extData: state.entity_id,
+            title,
+            content: content,
+        });
+        marker.on("click", () => {
+            this.fire("hass-more-info", { entityId: state.entity_id });
+        });
+        this.amapMap.add(marker);
+        console.log(`Add:${state.entity_id}`);
+        this.fitMapDebounced();
     }
 
     debounce(func, wait, immediate) {
@@ -265,8 +307,9 @@ class AmapPanel extends Element {
                 #AmapMap {
                     position: relative;
                     width: 100%;
-                    height: calc(100% - 64px);
+                    height: calc(100vh - 64px);
                     overflow: hidden;
+                    z-index: 0;
                 }
                 .input-card {
                     display: flex;
@@ -326,23 +369,26 @@ class AmapPanel extends Element {
                     height: 24px;
                 }
             </style>
-            <app-toolbar>
-                <ha-menu-button
-                    hass="[[hass]]"
-                    narrow="[[narrow]]"
-                ></ha-menu-button>
-                <div main-title>[[panel.title]]</div>
-            </app-toolbar>
-
-            <div id="AmapMap"></div>
-            <div class="input-card">
-                <div class="input-item">
-                    <label>
-                        <input type="checkbox" on-click="toggleTrafffic" />
-                        实时路况
-                    </label>
+            <ha-app-layout>
+                <app-header fixed slot="header">
+                    <app-toolbar>
+                        <ha-menu-button
+                            hass="[[hass]]"
+                            narrow="[[narrow]]"
+                        ></ha-menu-button>
+                        <div main-title>[[panel.title]]</div>
+                    </app-toolbar>
+                </app-header>
+                <div id="AmapMap"></div>
+                <div class="input-card">
+                    <div class="input-item">
+                        <label>
+                            <input type="checkbox" on-click="toggleTrafffic" />
+                            实时路况
+                        </label>
+                    </div>
                 </div>
-            </div>
+            </ha-app-layout>
         `;
     }
 }

@@ -150,3 +150,75 @@ export function out_of_china(lng, lat) {
         lng < 72.004 || lng > 137.8347 || lat < 0.8293 || lat > 55.8271 || false
     );
 }
+
+/**
+ * ISO时间转成时间戳
+ */
+export function getTimeIsoToTs(ms) {
+    // 把时间的中的T和Z 替换成空字符串
+    let date = ms.replace("T", " ");
+    let data = date.replace("Z", "");
+    // 声明一个变量赋值给：日期时间字符串，并返回 1970/1/1 午夜距离该日期时间的毫秒数
+    let datime = Date.parse(data);
+    let time = new Date();
+    let msi = time.getTime();
+    return msi;
+}
+
+/**
+ * 时间戳转换ISO
+ * @param {*} tm
+ */
+export function getTimeTsToIso(tm) {
+    let _tm = tm;
+    let date = new Date(tm);
+    date.getTime(_tm * 1000);
+    // console.log(date.toDateString());//Mon Mar 11 2019
+    // console.log(date.toGMTString()); //Mon, 11 Mar 2019 06:55:07 GMT
+    // console.log(date.toISOString()); //2019-03-11T06:55:07.622Z
+    return date.toISOString();
+}
+
+/**
+ * 获取实体类型
+ */
+export function getEntityDomain(entity) {
+    if (!entity) return "";
+    const { entity_id } = entity;
+    return entity_id.substr(0, entity_id.indexOf("."));
+}
+
+/**
+ * 获取实体对象Id
+ * @param {*} entity
+ */
+export function getEntityObjectId(entity) {
+    if (!entity) return "";
+    const { entity_id } = entity;
+    return entity_id.substr(entity_id.indexOf(".") + 1);
+}
+
+/**
+ * 获取实体别名
+ */
+export function getEntityName(entity) {
+    if (!entity) return "";
+    const friendly_name = entity.attributes.friendly_name || "";
+    const object_name = getEntityObjectId(entity).replace(/_/g, " ");
+    return friendly_name || object_name;
+}
+
+/**
+ * 获取实体别名简化
+ * @param {*} entity
+ */
+export function getEntityShortName(entity) {
+    if (!entity) return "";
+    const entity_name = getEntityName(entity);
+    const short_name = entity_name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .substr(0, 3);
+    return short_name;
+}
