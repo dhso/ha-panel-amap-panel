@@ -14,8 +14,13 @@ panel_custom:
       trust_external_script: true
       config:
           key: 高德地图Web端key
+          amap_devices: # 高德坐标系设备
+            - device_tracker.xxx
+          baidu_devices: # 百度坐标系设备
+            - device_tracker.xxx
 ```
 3. 重启 home assistant, enjoy your self!
+4. ⚠️注意：默认支持的是GPS设备坐标，如果发现自己的坐标是高德或者百度坐标系，请使用 `amap_devices` `baidu_devices` 配置！
 
 ## 截图
 1. 浅色模式
@@ -31,6 +36,9 @@ panel_custom:
 
 ## 日志
 ```
+2022-01-16
+1.[特性]增加GCJ02坐标的设备配置，防止再次坐标转换（感谢 @yongman）
+
 2020-09-23
 1.[特性]适配最新版本的 Home Assistant（yaml配置跟文件放置路径都发生了变化）
 2.[特性]增加深色模式（根据设置里面配置的主题自动选择模式）

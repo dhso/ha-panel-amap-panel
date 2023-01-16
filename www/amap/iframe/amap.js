@@ -4,7 +4,9 @@ const PI = 3.1415926535897932384626;
 const offset_a = 6378245.0;
 const offset_ee = 0.00669342162296594323;
 const {
-    key
+    key,
+    amap_devices = [],
+    baidu_devices = [],
 } = parent.panel.config;
 
 window.zones = [];
@@ -20,9 +22,9 @@ window.addEventListener('load', function () {
 });
 
 AMapLoader.load({
-        key, // 申请好的Web端开发者Key，首次调用 load 时必填
-        plugins: ['AMap.Scale', 'AMap.ToolBar'] // 需要使用的的插件列表，如比例尺'AMap.Scale'等
-    })
+    key, // 申请好的Web端开发者Key，首次调用 load 时必填
+    plugins: ['AMap.Scale', 'AMap.ToolBar'] // 需要使用的的插件列表，如比例尺'AMap.Scale'等
+})
     .then(AMap => {
         const {
             longitude,
@@ -34,7 +36,7 @@ AMapLoader.load({
         const amapMapId = document.querySelector('#AmapMap');
         const amapMapOption = {
             resizeEnable: true,
-            center: wgs84togcj02(longitude, latitude),
+            center: transformTo('', longitude, latitude),
             zoom: 13,
             defaultCursor: 'pointer',
             mapStyle: darkMode ? 'amap://styles/dark' : 'amap://styles/normal'
@@ -88,6 +90,24 @@ function wgs84togcj02(lng, lat) {
         var mglng = lng + dlng;
         return [mglng, mglat];
     }
+}
+
+/**
+ * 百度坐标系 (BD-09) 与 火星坐标系 (GCJ-02)的转换
+ * 即 百度 转 谷歌、高德
+ * @param bd_lon
+ * @param bd_lat
+ * @returns {*[]}
+ */
+function bd09togcj02(bd_lon, bd_lat) {
+    var x_pi = (3.14159265358979324 * 3000.0) / 180.0;
+    var x = bd_lon - 0.0065;
+    var y = bd_lat - 0.006;
+    var z = Math.sqrt(x * x + y * y) - 0.00002 * Math.sin(y * x_pi);
+    var theta = Math.atan2(y, x) - 0.000003 * Math.cos(x * x_pi);
+    var gg_lng = z * Math.cos(theta);
+    var gg_lat = z * Math.sin(theta);
+    return [gg_lng, gg_lat];
 }
 
 /**
@@ -146,7 +166,7 @@ function transformlng(lng, lat) {
         3.0;
     ret +=
         ((150.0 * Math.sin((lng / 12.0) * PI) +
-                300.0 * Math.sin((lng / 30.0) * PI)) *
+            300.0 * Math.sin((lng / 30.0) * PI)) *
             2.0) /
         3.0;
     return ret;
@@ -180,7 +200,7 @@ function drawZone(state) {
     } = state.attributes;
     if (passive) return;
     const title = getEntityName(state);
-    const lnglat = wgs84togcj02(longitude, latitude);
+    const lnglat = transformTo(state.entity_id, longitude, latitude);
     // 添加图标
     const marker = new AMap.Marker({
         position: lnglat,
@@ -243,7 +263,7 @@ function drawEntities(hass) {
             longitude,
             latitude
         } = hass.states[state].attributes;
-        const lnglat = wgs84togcj02(longitude, latitude);
+        const lnglat = transformTo(state, longitude, latitude);
         marker.setPosition(new AMap.LngLat(lnglat[0], lnglat[1]));
         console.log(`Mov:${state}`);
         // 剩余部分
@@ -268,7 +288,7 @@ function drawTracker(state) {
         latitude,
         entity_picture
     } = attributes;
-    const lnglat = wgs84togcj02(longitude, latitude);
+    const lnglat = transformTo(state.entity_id, longitude, latitude);
     const title = getEntityName(state);
     const short_title = getEntityShortName(state);
 
@@ -370,4 +390,14 @@ function toggleTraffic(e) {
 
 function setGlobalCssVars(key, val) {
     document.documentElement.style.setProperty(key, val);
+}
+
+function transformTo(entity_id, longitude, latitude) {
+    if (amap_devices.includes(entity_id)) {
+        return [longitude, latitude];
+    } else if (baidu_devices.includes(entity_id)) {
+        return bd09togcj02[longitude, latitude];
+    } else {
+        return wgs84togcj02(longitude, latitude);
+    }
 }
