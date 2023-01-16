@@ -214,6 +214,11 @@ function drawZone(state) {
             entityId: state.entity_id
         });
     });
+    marker.setLabel({
+        offset: new AMap.Pixel(0, -20),
+        content: `<div class='device-marker-info'>${title}</div>`,
+        direction: 'center'
+    });
     window.amapMap.add(marker);
     // 添加圆形区域
     const circle = new AMap.Circle({
@@ -286,7 +291,8 @@ function drawTracker(state) {
     const {
         longitude,
         latitude,
-        entity_picture
+        entity_picture,
+        icon,
     } = attributes;
     const lnglat = transformTo(state.entity_id, longitude, latitude);
     const title = getEntityName(state);
@@ -294,7 +300,8 @@ function drawTracker(state) {
 
     const content = entity_picture ?
         `<div class="device-marker" style="background-image: url(${entity_picture});" ></div>` :
-        `<div class="device-marker"> ${short_title}</div>`;
+        icon ? `<div class="device-marker"><i class="mdi ${icon.replace(':', '-')}"></i></div>` :
+            `<div class="device-marker"> ${short_title}</div>`;
     const marker = new AMap.Marker({
         position: lnglat,
         offset: new AMap.Pixel(-20, -20),
@@ -306,6 +313,11 @@ function drawTracker(state) {
         parent.fire('hass-more-info', {
             entityId: state.entity_id
         });
+    });
+    marker.setLabel({
+        offset: new AMap.Pixel(0, -34),
+        content: `<div class='device-marker-info'>${title}</div>`,
+        direction: 'center'
     });
     window.amapMap.add(marker);
     console.log(`Add:${state.entity_id}`);
