@@ -2,7 +2,7 @@
 Amap map panel for home assistant
 
 ## 使用
-1. 将 amap文件夹 放入 home assistant 的 www 文件夹。
+1. 将 amap文件夹 放入 home assistant 的 www 文件夹, **不要修改文件夹名称**。
 2. 配置 configuration.yaml 文件，加入如下配置：
 
 ```yaml
@@ -18,9 +18,13 @@ panel_custom:
             - device_tracker.xxx
           baidu_devices: # 百度坐标系设备
             - device_tracker.xxx
+          ignore_devices: # 忽略设备
+            - device_tracker.xxx
 ```
 3. 重启 home assistant, enjoy your self!
-4. ⚠️注意：默认支持的是GPS设备坐标，如果发现自己的坐标是高德或者百度坐标系，请使用 `amap_devices` `baidu_devices` 配置！
+4. ⚠️ 注意：
+  - 默认支持的是GPS设备坐标，如果发现自己的坐标是高德或者百度坐标系，请使用 `amap_devices` `baidu_devices` 配置！
+  - 只显示家庭范围外的设备，需要忽略其他设备请使用 `ignore_devices` 配置。
 
 ## 截图
 1. 浅色模式

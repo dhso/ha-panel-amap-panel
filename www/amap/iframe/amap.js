@@ -7,6 +7,7 @@ const {
     key,
     amap_devices = [],
     baidu_devices = [],
+    ignore_devices = [],
 } = parent.panel.config;
 
 window.zones = [];
@@ -19,52 +20,58 @@ window.ready = false;
 window.addEventListener('load', function () {
     window.ready = true;
     parent.iframeReady();
+    createMap();
 });
 
-AMapLoader.load({
-    key, // 申请好的Web端开发者Key，首次调用 load 时必填
-    plugins: ['AMap.Scale', 'AMap.ToolBar'] // 需要使用的的插件列表，如比例尺'AMap.Scale'等
-})
-    .then(AMap => {
-        const {
-            longitude,
-            latitude
-        } = parent.hass.config;
-        const {
-            darkMode
-        } = parent.hass.themes;
-        const amapMapId = document.querySelector('#AmapMap');
-        const amapMapOption = {
-            resizeEnable: true,
-            center: transformTo('', longitude, latitude),
-            zoom: 13,
-            defaultCursor: 'pointer',
-            mapStyle: darkMode ? 'amap://styles/dark' : 'amap://styles/normal'
-        };
-        const toolBar = new AMap.ToolBar({
-            liteStyle: true
-        });
-        const scale = new AMap.Scale();
-
-        window.amapMap = new AMap.Map(amapMapId, amapMapOption);
-        window.amapMap.addControl(toolBar);
-        window.amapMap.addControl(scale);
-        window.amapMap.on('complete', () => {
-            console.log('amap complete');
-            window.amapMapTrafficLayer = new AMap.TileLayer.Traffic({
-                autoRefresh: true
-            });
-            window.amapMapTrafficLayer.hide();
-            window.amapMapTrafficLayer.setMap(window.amapMap);
-
-            drawZonesDebounced(parent.hass);
-            drawEntitiesDebounced(parent.hass);
-            fitMapDebounced();
-        });
+function createMap() {
+    if (window.amapMap) return;
+    AMapLoader.load({
+        key, // 申请好的Web端开发者Key，首次调用 load 时必填
+        plugins: ['AMap.Scale', 'AMap.ToolBar'] // 需要使用的的插件列表，如比例尺'AMap.Scale'等
     })
-    .catch(e => {
-        console.error(e); //加载错误提示
-    });
+        .then(AMap => {
+            const {
+                longitude,
+                latitude
+            } = parent.hass.config;
+            const {
+                darkMode
+            } = parent.hass.themes;
+            const amapMapId = document.querySelector('#AmapMap');
+            const amapMapOption = {
+                resizeEnable: true,
+                center: transformTo('', longitude, latitude),
+                zoom: 13,
+                defaultCursor: 'pointer',
+                mapStyle: darkMode ? 'amap://styles/dark' : 'amap://styles/normal'
+            };
+            const toolBar = new AMap.ToolBar({
+                liteStyle: true
+            });
+            const scale = new AMap.Scale();
+
+            window.amapMap = new AMap.Map(amapMapId, amapMapOption);
+            window.amapMap.addControl(toolBar);
+            window.amapMap.addControl(scale);
+            window.amapMap.on('complete', () => {
+                console.log('amap complete');
+                window.amapMapTrafficLayer = new AMap.TileLayer.Traffic({
+                    autoRefresh: true
+                });
+                window.amapMapTrafficLayer.hide();
+                window.amapMapTrafficLayer.setMap(window.amapMap);
+
+                drawZonesDebounced(parent.hass);
+                drawEntitiesDebounced(parent.hass);
+                fitMapDebounced();
+            });
+        })
+        .catch(e => {
+            console.error(e); //加载错误提示
+        });
+}
+
+
 
 /**
  * WGS84转GCj02
@@ -179,7 +186,7 @@ function drawZones(hass) {
             attributes
         } = hass.states[state];
         return (
-            state.indexOf('zone') === 0 &&
+            state.indexOf('zone.') === 0 &&
             'longitude' in attributes &&
             'latitude' in attributes
         );
@@ -244,7 +251,8 @@ function drawEntities(hass) {
         } = hass.states[state];
         return (
             // attributes.source_type === "gps" &&
-            state.indexOf('device_tracker') === 0 &&
+            (state.indexOf('device_tracker.') === 0 || state.indexOf('person.') === 0) &&
+            !ignore_devices.includes(state) &&
             'longitude' in attributes &&
             'latitude' in attributes
         );
@@ -256,7 +264,7 @@ function drawEntities(hass) {
         // entity_id
         const state = marker.getExtData();
         // 排除zone
-        if (state.indexOf('zone') === 0) continue;
+        if (state.indexOf('zone.') === 0) continue;
         if (!window.trackers.includes(state)) {
             // 移除点
             window.amapMap.remove(marker);
@@ -393,6 +401,7 @@ function fitMap() {
 
 function destroyMap() {
     window.amapMap && window.amapMap.destroy();
+    window.amapMap = null;
 }
 
 function toggleTraffic(e) {

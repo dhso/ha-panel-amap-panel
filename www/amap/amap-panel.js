@@ -41,12 +41,12 @@ class AmapPanel extends Element {
         window.hass = this.hass;
         window.fire = this.fire.bind(this);
         window.iframeReady = this.iframeReady.bind(this);
+        const iframe = this.getIframe();
+        iframe && iframe.location.reload();
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
-        const iframe = this.getIframe();
-        iframe && iframe.destroyMap();
     }
 
     ready() {
