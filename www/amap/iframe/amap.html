@@ -1,0 +1,83 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <script src="https://webapi.amap.com/loader.js"></script>
+    <link rel="stylesheet preload" href="./mdi/css/materialdesignicons.min.css">
+    <style>
+        #AmapMap {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+        }
+
+        .device-marker {
+            position: relative;
+            display: block;
+            margin: 0 auto;
+            width: 38px;
+            text-align: center;
+            height: 38px;
+            line-height: 38px;
+            font-size: 14px;
+            border-radius: 50%;
+            border: 1px solid var(--ha-marker-color, var(--default-primary-color));
+            color: var(--primary-text-color);
+            background-color: var(--primary-background-color);
+        }
+
+        .mdi-icon {
+            color: var(--primary-text-color);
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .input-card {
+            display: flex;
+            flex-direction: column;
+            word-wrap: break-word;
+            background-color: var(--primary-background-color);
+            background-clip: border-box;
+            color: var(--primary-text-color);
+            border-radius: 5px;
+            border-width: 0;
+            box-shadow: 0 2px 6px 0 var(--primary-background-color);
+            position: fixed;
+            flex: 1 1 auto;
+            padding: 10px;
+            width: auto;
+            top: 74px;
+            right: 10px;
+            bottom: auto;
+        }
+
+        .input-item {
+            position: relative;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            width: 100%;
+            height: 24px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="AmapMap" tabindex="0"></div>
+    <div class="input-card">
+        <div class="input-item">
+            <label>
+                <input type="checkbox" onclick="toggleTraffic(this)" />
+                实时路况
+            </label>
+        </div>
+    </div>
+    <script src="./amap.js"></script>
+</body>
+
+</html>

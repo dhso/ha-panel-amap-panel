@@ -56,8 +56,7 @@ export function wgs84togcj02(lng, lat) {
         dlat =
             (dlat * 180.0) /
             (((offset_a * (1 - offset_ee)) / (magic * sqrtmagic)) * PI);
-        dlng =
-            (dlng * 180.0) / ((offset_a / sqrtmagic) * Math.cos(radlat) * PI);
+        dlng = (dlng * 180.0) / ((offset_a / sqrtmagic) * Math.cos(radlat) * PI);
         var mglat = lat + dlat;
         var mglng = lng + dlng;
         return [mglng, mglat];
@@ -83,8 +82,7 @@ export function gcj02towgs84(lng, lat) {
         dlat =
             (dlat * 180.0) /
             (((offset_a * (1 - offset_ee)) / (magic * sqrtmagic)) * PI);
-        dlng =
-            (dlng * 180.0) / ((offset_a / sqrtmagic) * Math.cos(radlat) * PI);
+        dlng = (dlng * 180.0) / ((offset_a / sqrtmagic) * Math.cos(radlat) * PI);
         mglat = lat + dlat;
         mglng = lng + dlng;
         return [lng * 2 - mglng, lat * 2 - mglat];
@@ -104,12 +102,10 @@ export function transformlat(lng, lat) {
             2.0) /
         3.0;
     ret +=
-        ((20.0 * Math.sin(lat * PI) + 40.0 * Math.sin((lat / 3.0) * PI)) *
-            2.0) /
+        ((20.0 * Math.sin(lat * PI) + 40.0 * Math.sin((lat / 3.0) * PI)) * 2.0) /
         3.0;
     ret +=
-        ((160.0 * Math.sin((lat / 12.0) * PI) +
-            320 * Math.sin((lat * PI) / 30.0)) *
+        ((160.0 * Math.sin((lat / 12.0) * PI) + 320 * Math.sin((lat * PI) / 30.0)) *
             2.0) /
         3.0;
     return ret;
@@ -128,8 +124,7 @@ export function transformlng(lng, lat) {
             2.0) /
         3.0;
     ret +=
-        ((20.0 * Math.sin(lng * PI) + 40.0 * Math.sin((lng / 3.0) * PI)) *
-            2.0) /
+        ((20.0 * Math.sin(lng * PI) + 40.0 * Math.sin((lng / 3.0) * PI)) * 2.0) /
         3.0;
     ret +=
         ((150.0 * Math.sin((lng / 12.0) * PI) +
@@ -156,8 +151,8 @@ export function out_of_china(lng, lat) {
  */
 export function getTimeIsoToTs(ms) {
     // 把时间的中的T和Z 替换成空字符串
-    let date = ms.replace("T", " ");
-    let data = date.replace("Z", "");
+    let date = ms.replace('T', ' ');
+    let data = date.replace('Z', '');
     // 声明一个变量赋值给：日期时间字符串，并返回 1970/1/1 午夜距离该日期时间的毫秒数
     let datime = Date.parse(data);
     let time = new Date();
@@ -183,9 +178,9 @@ export function getTimeTsToIso(tm) {
  * 获取实体类型
  */
 export function getEntityDomain(entity) {
-    if (!entity) return "";
+    if (!entity) return '';
     const { entity_id } = entity;
-    return entity_id.substr(0, entity_id.indexOf("."));
+    return entity_id.substr(0, entity_id.indexOf('.'));
 }
 
 /**
@@ -193,18 +188,18 @@ export function getEntityDomain(entity) {
  * @param {*} entity
  */
 export function getEntityObjectId(entity) {
-    if (!entity) return "";
+    if (!entity) return '';
     const { entity_id } = entity;
-    return entity_id.substr(entity_id.indexOf(".") + 1);
+    return entity_id.substr(entity_id.indexOf('.') + 1);
 }
 
 /**
  * 获取实体别名
  */
 export function getEntityName(entity) {
-    if (!entity) return "";
-    const friendly_name = entity.attributes.friendly_name || "";
-    const object_name = getEntityObjectId(entity).replace(/_/g, " ");
+    if (!entity) return '';
+    const friendly_name = entity.attributes.friendly_name || '';
+    const object_name = getEntityObjectId(entity).replace(/_/g, ' ');
     return friendly_name || object_name;
 }
 
@@ -213,12 +208,62 @@ export function getEntityName(entity) {
  * @param {*} entity
  */
 export function getEntityShortName(entity) {
-    if (!entity) return "";
+    if (!entity) return '';
     const entity_name = getEntityName(entity);
     const short_name = entity_name
-        .split(" ")
-        .map((part) => part[0])
-        .join("")
+        .split(' ')
+        .map(part => part[0])
+        .join('')
         .substr(0, 3);
     return short_name;
+}
+
+/**
+ * debounce
+ * @param {*} func
+ * @param {*} wait
+ * @param {*} immediate
+ * @returns
+ */
+export function debounce(func, wait, immediate) {
+    let timeout;
+    return function (...args) {
+        const context = this;
+        const later = () => {
+            timeout = null;
+            if (!immediate) func.apply(context, args);
+        };
+        const callNow = immediate && !timeout;
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+        if (callNow) func.apply(context, args);
+    };
+}
+
+/**
+ * throttle
+ * @param fn
+ * @param interval
+ * @returns
+ */
+
+export function throttle(fn, interval) {
+    let last;
+    let timer;
+    interval || (interval = 250);
+    return function () {
+        const context = this;
+        const args = arguments;
+        let now = +new Date();
+        if (last && now < last + interval) {
+            clearTimeout(timer);
+            timer = setTimeout(function () {
+                last = now;
+                fn.apply(context, args);
+            }, interval);
+        } else {
+            last = now;
+            fn.apply(context, args);
+        }
+    };
 }
