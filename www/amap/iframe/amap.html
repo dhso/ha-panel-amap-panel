@@ -25,7 +25,7 @@
             border-radius: 50%;
             border: 1px solid var(--ha-marker-color, var(--default-primary-color));
             color: var(--primary-text-color);
-            background-color: var(--primary-background-color);
+            background-color: var(--primary-background-color, #fff);
             background-repeat: no-repeat;
             background-size: contain;
         }
@@ -40,6 +40,9 @@
         .amap-marker-label {
             border-radius: 4px;
             opacity: 0.75;
+            color: var(--primary-text-color);
+            background-color: var(--primary-background-color, #fff);
+            border-color: var(--primary-background-color);
         }
 
         .mdi-icon {
@@ -54,12 +57,12 @@
         .input-card {
             display: flex;
             flex-direction: column;
-            background-color: var(--primary-background-color);
+            background-color: var(--primary-background-color, #fff);
             background-clip: border-box;
             color: var(--primary-text-color);
             border-radius: 5px;
             border-width: 0;
-            box-shadow: 0 2px 6px 0 var(--primary-background-color);
+            box-shadow: 0 2px 6px 0 var(--primary-background-color, #fff);
             position: fixed;
             padding: 8px;
             top: 10px;
