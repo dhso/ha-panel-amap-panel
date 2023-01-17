@@ -4,66 +4,91 @@ const PI = 3.1415926535897932384626;
 const offset_a = 6378245.0;
 const offset_ee = 0.00669342162296594323;
 
-window.zones = [];
-window.trackers = [];
-window.drawZonesDebounced = debounce(drawZones, 500);
-window.drawEntitiesDebounced = debounce(drawEntities, 500);
-window.fitMapDebounced = debounce(fitMap, 500);
-window.ready = false;
+let zones = [];
+let trackers = [];
+const drawZonesDebounced = debounce(drawZones, 500);
+const fitMapDebounced = debounce(fitMap, 500);
 
+window.drawEntitiesDebounced = debounce(drawEntities, 500);
+window.init = init;
+window.ready = false;
 window.addEventListener('load', function () {
     window.ready = true;
     parent.iframeReady();
-    createMap();
+    init();
 });
 
-function createMap() {
-    if (window.amapMap) return;
-    AMapLoader.load({
-        key, // 申请好的Web端开发者Key，首次调用 load 时必填
-        version: jscode ? '2.0': '',
-        plugins: ['AMap.Scale', 'AMap.ToolBar'], // 需要使用的的插件列表，如比例尺'AMap.Scale'等
-    })
-        .then(AMap => {
-            const {
-                longitude,
-                latitude
-            } = parent.hass.config;
-            const {
-                darkMode
-            } = parent.hass.themes;
-            const amapMapId = document.querySelector('#AmapMap');
-            const amapMapOption = {
-                resizeEnable: true,
-                center: transformTo('', longitude, latitude),
-                zoom: 13,
-                defaultCursor: 'pointer',
-                mapStyle: darkMode ? 'amap://styles/dark' : 'amap://styles/normal'
-            };
-            const toolBar = new AMap.ToolBar({
-                liteStyle: true
-            });
-            const scale = new AMap.Scale();
+// 传递Css变量
+function transmitVarCss() {
+    const globalCssVars = top.getComputedStyle(top.document.documentElement);
+    const styles = top.document.documentElement.style;
+    for (const k of styles) {
+        document.documentElement.style.setProperty(k, globalCssVars.getPropertyValue(k));
+    }
+}
 
-            window.amapMap = new AMap.Map(amapMapId, amapMapOption);
-            window.amapMap.addControl(toolBar);
-            window.amapMap.addControl(scale);
+// 初始化
+function init() {
+    transmitVarCss();
+    createMapPromise().then(() => {
+        drawZonesDebounced(hass);
+        drawEntitiesDebounced(hass);
+        fitMapDebounced();
+    }).catch(e => {
+        console.error(e); //加载错误提示
+    });
+}
+
+// 创建Map
+function createMapPromise() {
+    return new Promise((resolve) => {
+        if (window.amapMap) {
+            console.warn('::销毁已经存在的地图实例');
+            destroyMap();
+        }
+        resolve();
+        console.warn('::即将创建地图实例');
+    }).then(() => {
+        return AMapLoader.load({
+            key, // 申请好的Web端开发者Key，首次调用 load 时必填
+            version: jscode ? '2.0' : '',
+            plugins: ['AMap.Scale', 'AMap.ToolBar'], // 需要使用的的插件列表，如比例尺'AMap.Scale'等
+        })
+    }).then(AMap => {
+        const {
+            longitude,
+            latitude
+        } = hass.config;
+        const {
+            darkMode
+        } = hass.themes;
+        const amapMapId = document.querySelector('#AmapMap');
+        const amapMapOption = {
+            resizeEnable: true,
+            center: transformTo('', longitude, latitude),
+            zoom: 13,
+            defaultCursor: 'pointer',
+            mapStyle: darkMode ? 'amap://styles/dark' : 'amap://styles/normal'
+        };
+        const toolBar = new AMap.ToolBar({
+            liteStyle: true
+        });
+        const scale = new AMap.Scale();
+        window.amapMap = new AMap.Map(amapMapId, amapMapOption);
+        window.amapMap.addControl(toolBar);
+        window.amapMap.addControl(scale);
+        return new Promise((resolve) => {
             window.amapMap.on('complete', () => {
-                console.log('amap complete');
+                console.warn('::地图实例创建完成');
                 window.amapMapTrafficLayer = new AMap.TileLayer.Traffic({
                     autoRefresh: true
                 });
                 window.amapMapTrafficLayer.hide();
                 window.amapMapTrafficLayer.setMap(window.amapMap);
-
-                drawZonesDebounced(parent.hass);
-                drawEntitiesDebounced(parent.hass);
-                fitMapDebounced();
+                resolve();
             });
         })
-        .catch(e => {
-            console.error(e); //加载错误提示
-        });
+    });
 }
 
 
@@ -176,7 +201,7 @@ function transformlng(lng, lat) {
 
 function drawZones(hass) {
     if (!window.amapMap || !hass || !hass.states) return;
-    window.zones = Object.keys(hass.states).filter(state => {
+    zones = Object.keys(hass.states).filter(state => {
         const {
             attributes
         } = hass.states[state];
@@ -186,7 +211,7 @@ function drawZones(hass) {
             'latitude' in attributes
         );
     });
-    for (let zone of window.zones) {
+    for (let zone of zones) {
         drawZone(hass.states[zone]);
     }
 }
@@ -212,7 +237,7 @@ function drawZone(state) {
         content: `<div class="mdi-icon"><i class="mdi ${icon.replace(':', '-')}"></i></div>`
     });
     marker.on('click', () => {
-        parent.fire('hass-more-info', {
+        fire('hass-more-info', {
             entityId: state.entity_id
         });
     });
@@ -240,7 +265,7 @@ function drawZone(state) {
 
 function drawEntities(hass) {
     if (!window.amapMap || !hass || !hass.states) return;
-    window.trackers = Object.keys(hass.states).filter(state => {
+    trackers = Object.keys(hass.states).filter(state => {
         const {
             attributes
         } = hass.states[state];
@@ -252,7 +277,7 @@ function drawEntities(hass) {
             'latitude' in attributes
         );
     });
-    const _trackers = window.trackers.slice();
+    const _trackers = trackers.slice();
 
     const markers = window.amapMap.getAllOverlays('marker');
     for (let marker of markers) {
@@ -260,7 +285,7 @@ function drawEntities(hass) {
         const state = marker.getExtData();
         // 排除zone
         if (state.indexOf('zone.') === 0) continue;
-        if (!window.trackers.includes(state)) {
+        if (!trackers.includes(state)) {
             // 移除点
             window.amapMap.remove(marker);
             console.log(`Del:${state}`);
@@ -313,7 +338,7 @@ function drawTracker(state) {
         content: content
     });
     marker.on('click', () => {
-        parent.fire('hass-more-info', {
+        fire('hass-more-info', {
             entityId: state.entity_id
         });
     });
@@ -404,10 +429,6 @@ function toggleTraffic(e) {
     e.checked ? window.amapMapTrafficLayer.show() : window.amapMapTrafficLayer.hide();
 }
 
-function setGlobalCssVars(key, val) {
-    document.documentElement.style.setProperty(key, val);
-}
-
 function transformTo(entity_id, longitude, latitude) {
     if (amap_devices.includes(entity_id)) {
         return [longitude, latitude];
@@ -416,4 +437,14 @@ function transformTo(entity_id, longitude, latitude) {
     } else {
         return wgs84togcj02(longitude, latitude);
     }
+}
+
+function fire(type, data) {
+    const event = new Event(type, {
+        bubbles: true,
+        cancelable: false,
+        composed: true,
+    });
+    event.detail = data;
+    app.dispatchEvent(event);
 }

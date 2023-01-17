@@ -5,13 +5,16 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
     <script type="text/javascript">
+        const app = top.document.querySelector('home-assistant');
+        const hass = app.hass;
+        const panel = hass.panels['amap-panel'];
         const {
             key,
             jscode = '',
             amap_devices = [],
             baidu_devices = [],
             ignore_devices = [],
-        } = parent.panel.config;
+        } = panel.config;
         if (jscode) {
             window._AMapSecurityConfig = {
                 securityJsCode: jscode,

@@ -28,57 +28,39 @@ class AmapPanel extends Element {
 
     constructor() {
         super();
-        // this.observerHassDebounced = debounce(
-        //     this.observerHass.bind(this),
-        //     500
-        // );
-        this.iframe = null;
+        window.iframeReady = this.iframeReady.bind(this);;
     }
 
     connectedCallback() {
+        console.warn('::ConnectedCallback');
         super.connectedCallback();
-        window.panel = this.panel;
-        window.hass = this.hass;
-        window.fire = this.fire.bind(this);
-        window.iframeReady = this.iframeReady.bind(this);
-        const iframe = this.getIframe();
-        iframe && iframe.location.reload();
+        this.allReady && this.iframe.init();
     }
 
     disconnectedCallback() {
+        console.warn('::DisconnectedCallback');
         super.disconnectedCallback();
     }
 
     ready() {
-        console.log("panel ready");
+        console.warn("::PanelReady");
         super.ready();
     }
 
     iframeReady() {
-        console.log("iframe ready");
-        // 写入CSS变量
-        const globalCssVars = window.getComputedStyle(document.documentElement);
-        const styles = document.documentElement.style;
-        const iframe = this.getIframe();
-        if (iframe) {
-            for (const k of styles) {
-                iframe.setGlobalCssVars(k, globalCssVars.getPropertyValue(k));
-            }
-            iframe.drawZonesDebounced(this.hass);
-        }
+        console.warn("::IframeReady");
     }
 
     observerHass() {
-        const iframe = this.getIframe();
-        if (iframe && iframe.ready) {
-            iframe.drawEntitiesDebounced(this.hass);
-        }
+        this.allReady && this.iframe.drawEntitiesDebounced(this.hass);
     }
 
-    getIframe() {
-        if (this.iframe) return this.iframe;
-        this.iframe = this.shadowRoot.querySelector("iframe").contentWindow;
-        return this.iframe;
+    get iframe() {
+        return this.shadowRoot.querySelector("iframe").contentWindow;
+    }
+
+    get allReady() {
+        return this.iframe && this.iframe.ready;
     }
 
     async fetchHistoryPath(start_time, end_time, entity_id) {
@@ -121,7 +103,10 @@ class AmapPanel extends Element {
                 iframe {
                     position: relative;
                     width: 100%;
-                    height: calc(100vh - 68px);
+                    height: calc(100vh - 60px);
+                }
+                app-toolbar {
+                    height: 56px;
                 }
             </style>
             <ha-app-layout>
