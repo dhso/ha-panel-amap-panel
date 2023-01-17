@@ -14,6 +14,7 @@ panel_custom:
       trust_external_script: true
       config:
           key: 高德地图Web端key
+          jscode: 高德地图Web端安全密钥 # 填写使用v2, 不填写使用v1, 自2021年12月02日升级，升级之后所申请的 key 必须配备安全密钥 jscode 一起使用
           amap_devices: # 高德坐标系设备
             - device_tracker.xxx
           baidu_devices: # 百度坐标系设备
@@ -42,6 +43,9 @@ panel_custom:
 ```
 2022-01-16
 1.[特性]增加GCJ02坐标的设备配置，防止再次坐标转换（感谢 @yongman）
+2.支持高德地图v2, 需要配合安全密钥
+3.修复头像显示等若干问题
+4.使用Iframe模式加载地图
 
 2020-09-23
 1.[特性]适配最新版本的 Home Assistant（yaml配置跟文件放置路径都发生了变化）

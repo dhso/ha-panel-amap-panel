@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
+    <script type="text/javascript">
+        const {
+            jscode = '',
+        } = parent.panel.config;
+        if (jscode) {
+            window._AMapSecurityConfig = {
+                securityJsCode: jscode,
+            };
+        }
+    </script>
     <script src="https://webapi.amap.com/loader.js"></script>
     <link rel="stylesheet preload" href="./mdi/css/materialdesignicons.min.css">
     <style>

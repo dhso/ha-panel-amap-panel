@@ -5,6 +5,7 @@ const offset_a = 6378245.0;
 const offset_ee = 0.00669342162296594323;
 const {
     key,
+    jscode = '',
     amap_devices = [],
     baidu_devices = [],
     ignore_devices = [],
@@ -27,7 +28,8 @@ function createMap() {
     if (window.amapMap) return;
     AMapLoader.load({
         key, // 申请好的Web端开发者Key，首次调用 load 时必填
-        plugins: ['AMap.Scale', 'AMap.ToolBar'] // 需要使用的的插件列表，如比例尺'AMap.Scale'等
+        version: jscode ? '2.0': '',
+        plugins: ['AMap.Scale', 'AMap.ToolBar'], // 需要使用的的插件列表，如比例尺'AMap.Scale'等
     })
         .then(AMap => {
             const {
