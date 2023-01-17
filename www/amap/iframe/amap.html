@@ -6,7 +6,11 @@
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no, width=device-width">
     <script type="text/javascript">
         const {
+            key,
             jscode = '',
+            amap_devices = [],
+            baidu_devices = [],
+            ignore_devices = [],
         } = parent.panel.config;
         if (jscode) {
             window._AMapSecurityConfig = {
