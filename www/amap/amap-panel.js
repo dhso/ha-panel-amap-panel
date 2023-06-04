@@ -94,7 +94,7 @@ class AmapPanel extends LitElement {
         this.dispatchEvent(event);
     }
 
-    static get template() {
+    render() {
         return html `
             <meta
                 name="viewport"
