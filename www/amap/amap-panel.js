@@ -2,12 +2,13 @@ import {
     wgs84togcj02,
 } from "./libs/utils.js?module";
 
-const {
-    Element,
-    html
-} = Polymer;
+import {
+  LitElement,
+  html,
+  css,
+} from "https://unpkg.com/lit-element@2.4.0/lit-element.js?module";
 
-class AmapPanel extends Element {
+class AmapPanel extends LitElement {
     static get properties() {
         return {
             hass: {
